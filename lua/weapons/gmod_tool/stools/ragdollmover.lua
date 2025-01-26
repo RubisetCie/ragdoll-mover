@@ -1851,7 +1851,7 @@ function TOOL:Deploy()
 end
 
 local function EntityFilter(ent, tool)
-	return (ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") or (tool:GetClientNumber("disablefilter") ~= 0 and not ent:IsWorld())
+	return ent:GetBrushPlaneCount() == 0 and ((ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") or (tool:GetClientNumber("disablefilter") ~= 0 and not ent:IsWorld()))
 end
 
 function TOOL:LeftClick()
@@ -4892,6 +4892,9 @@ hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
 	end
 end)
 
+local BoneColors = {}
+local LastSelectThink, LastEnt = 0, nil
+
 function TOOL:DrawHUD()
 
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
@@ -4902,11 +4905,14 @@ function TOOL:DrawHUD()
 	local bone = plTable.Bone
 	local axis = plTable.Axis
 	local moving = plTable.Moving or false
+	local thinktime = CurTime()
 	--We don't draw the axis if we don't have the axis entity or the target entity,
 	--or if we're not allowed to draw it.
 
 	local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 	local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
+	local viewvec = IsValid(plviewent) and plviewent:GetForward() or pl:GetViewEntity():GetForward()
+	local fov = pl:GetFOV()
 
 	if not (self:GetOperation() == 2) and IsValid(ent) and IsValid(axis) and bone then
 		local width = GizmoWidth or 0.5
@@ -4947,10 +4953,18 @@ function TOOL:DrawHUD()
 	end
 
 	if self:GetOperation() == 2 and IsValid(ent) then
+		local timecheck = (thinktime - LastSelectThink) > 0.1
+		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck
+
 		if self:GetStage() == 0 then
-			rgm.AdvBoneSelectRender(ent, nodes)
+			BoneColors = rgm.AdvBoneSelectRender(ent, nodes, BoneColors, calc, eyepos, viewvec, fov)
 		else
 			rgm.AdvBoneSelectRadialRender(ent, plTable.SelectedBones, nodes, ResetMode)
+		end
+
+		LastEnt = ent
+		if timecheck then
+			LastSelectThink = thinktime
 		end
 	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity, self) and (not bone or aimedbone ~= bone or tr.Entity ~= ent) and not moving then
 		rgm.DrawBoneConnections(tr.Entity, aimedbone)
