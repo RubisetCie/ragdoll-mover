@@ -107,7 +107,6 @@ function ENT:Think()
 		end
 	end
 
-
 	if IsValid(parent) and plTable.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not ent:IsEffectActive(EF_FOLLOWBONE) and not (ent:GetClass() == "prop_ragdoll") and not scale then
 		ang = parent:LocalToWorldAngles(ent:GetLocalAngles())
 	elseif plTable.IsPhysBone and not scale then

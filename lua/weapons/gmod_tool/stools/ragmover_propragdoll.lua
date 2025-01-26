@@ -1,4 +1,4 @@
-TOOL.Name = "#tool.ragmover_propragdoll.name2"
+TOOL.Name = "#tool.ragmover_propragdoll.name"
 TOOL.Category = "Poser"
 TOOL.Command = nil
 TOOL.ConfigName = ""

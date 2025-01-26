@@ -4,7 +4,6 @@
 ]]
 
 resource.AddSingleFile("resource/localization/en/ragdollmover_tools.properties")
-resource.AddSingleFile("resource/localization/en/ragdollmover_ui.properties")
 
 local MAX_EDICT_BITS = 13
 

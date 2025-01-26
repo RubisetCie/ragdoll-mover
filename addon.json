@@ -1,9 +1,10 @@
 {
+    "title": "Ragdoll Mover",
+    "type": "tool",
+    "tags": [],
     "ignore": [
         "README.md",
-        ".git/*"
-    ],
-    "tags": [],
-    "title": "Ragdoll Mover",
-    "type": "tool"
+        ".git/*",
+        ".github/*"
+    ]
 }

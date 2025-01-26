@@ -21,7 +21,6 @@ function ENT:DrawLines(width)
 	local start, last = 1, 7
 	if rotate then start, last = 8, 11 end
 	if modescale then start, last = 12, 17 end
-	-- print(self.Axises)
 
 	local gotselected = false
 	for i = start, last do

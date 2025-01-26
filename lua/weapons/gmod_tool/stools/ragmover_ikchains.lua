@@ -1,5 +1,5 @@
 
-TOOL.Name = "#tool.ragmover_ikchains.name2"
+TOOL.Name = "#tool.ragmover_ikchains.name"
 TOOL.Category = "Poser"
 TOOL.Command = nil
 TOOL.ConfigName = ""
