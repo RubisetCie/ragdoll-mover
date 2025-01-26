@@ -36,8 +36,8 @@ TOOL.ClientConVar["unfreeze"] = 0
 TOOL.ClientConVar["always_use_pl_view"] = 0
 TOOL.ClientConVar["updaterate"] = 0.01
 
-TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
-TOOL.ClientConVar["scalebutton"] = MOUSE_RIGHT
+TOOL.ClientConVar["rotatebutton"] = MOUSE_RIGHT
+TOOL.ClientConVar["scalebutton"] = MOUSE_MIDDLE
 
 local ConstrainedAllowed
 local NetStarter = {}
