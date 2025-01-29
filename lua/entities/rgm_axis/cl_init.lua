@@ -71,6 +71,7 @@ function ENT:DrawTranslucent()
 end
 
 local lastang = nil
+local IsValid = IsValid
 
 function ENT:Think()
 	if not pl or not RAGDOLLMOVER[pl] then return end

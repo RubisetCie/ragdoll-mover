@@ -18,6 +18,9 @@ local PLAYER_WEIGHT = 0.9
 -- How much gizmo's own velocity should influence collision bound
 local GIZMO_WEIGHT = 0.1
 
+local IsValid = IsValid
+local util = util
+
 function ENT:Think()
 	local pl = self.Owner
 	local size = self.DefaultMinMax

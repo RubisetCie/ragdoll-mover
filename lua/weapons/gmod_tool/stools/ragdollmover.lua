@@ -42,6 +42,14 @@ TOOL.ClientConVar["scalebutton"] = MOUSE_MIDDLE
 local ConstrainedAllowed
 local NetStarter = {}
 
+local IsValid = IsValid
+local CurTime = CurTime
+local cam = cam
+local net = net
+local util = util
+local vgui = vgui
+local render = render
+
 local BONELOCK_FAILED = 0
 local BONELOCK_SUCCESS = 1
 local BONELOCK_FAILED_NOTPHYS = 2

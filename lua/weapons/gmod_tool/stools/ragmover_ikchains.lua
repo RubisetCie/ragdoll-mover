@@ -19,6 +19,11 @@ local ikchains_iktypes = {
 	"tool.ragmover_ikchains.ik10"
 }
 
+local IsValid = IsValid
+local net = net
+local util = util
+local vgui = vgui
+
 local BAD_ORDER = 0
 local SAME_BONE = 1
 local SUCCESS = 2

@@ -3,6 +3,7 @@ RGMGIZMOS = {}
 local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local VECTOR_SIDE = RGM_Constants.VECTOR_LEFT
 local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
+local render = render
 
 ----------------
 -- BASE GIZMO --
