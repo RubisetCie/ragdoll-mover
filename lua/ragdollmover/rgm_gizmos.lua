@@ -13,8 +13,8 @@ do
 
 	basepart.IsDisc = false
 	basepart.Parent = nil
-	basepart.AngOffset = Angle(0, 0, 0)
-	basepart.LocalAng = Angle(0, 0, 0)
+	basepart.AngOffset = angle_zero
+	basepart.LocalAng = angle_zero
 	basepart.Color = nil
 	basepart.Color2 = nil
 	basepart.linepositions = nil

@@ -604,8 +604,8 @@ local function AddPRNode(parent, node)
 	PRUI.PRTree.Nodes[id] = parent:AddNode(id .. " [" .. node.text .. "]", "icon16/brick.png")
 	PRUI.PRTree.Nodes[id].ent = node.ent
 	PRUI.PRTree.Nodes[id].id = id
-	PRUI.PRTree.Nodes[id].offset = Vector(0, 0, 0)
-	PRUI.PRTree.Nodes[id].aoffset = Angle(0, 0, 0)
+	PRUI.PRTree.Nodes[id].offset = vector_origin
+	PRUI.PRTree.Nodes[id].aoffset = angle_zero
 	PRUI.PRTree.Nodes[id].parent = parent.id or nil
 	PRUI.PRTree.Nodes[id].depth = parent.depth and parent.depth + 1 or 1
 	PRUI.PRTree.Nodes[id]:Droppable("rgmPRMove")

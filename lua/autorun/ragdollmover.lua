@@ -1218,7 +1218,7 @@ local Colors = {
 	Color(255, 140, 105), -- Orange, for Resets
 	Color(100, 255, 255), -- Cyan (Blue is too dark), for Zeroing scale
 	Color(100, 255, 0), -- Green, for Locks
-	Color(255, 255, 255) -- White, for whatever
+	color_white -- White, for whatever
 }
 
 local FeaturesNPhys = {
