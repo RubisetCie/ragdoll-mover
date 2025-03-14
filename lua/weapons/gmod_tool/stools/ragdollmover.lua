@@ -20,6 +20,7 @@ TOOL.ClientConVar["scalerelativemove"] = 0
 TOOL.ClientConVar["drawskeleton"] = 0
 TOOL.ClientConVar["snapenable"] = 0
 TOOL.ClientConVar["snapamount"] = 30
+TOOL.ClientConVar["drawsphere"] = 1
 
 TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
@@ -1827,33 +1828,45 @@ concommand.Add("ragdollmover_resetroot", function(pl)
 	net.Send(pl)
 end)
 
+local function spawnAxis(pl, tool, plTable)
+	local axis = ents.Create("rgm_axis")
+	axis:SetPos(pl:EyePos())
+	axis:Spawn()
+	axis.Owner = pl
+	axis.localpos = tool:GetClientNumber("localpos", 0) ~= 0
+	axis.localang = tool:GetClientNumber("localang", 1) ~= 0
+	axis.localoffset = tool:GetClientNumber("localoffset", 1) ~= 0
+	axis.relativerotate = tool:GetClientNumber("relativerotate", 0) ~= 0
+	axis.scalechildren = tool:GetClientNumber("scalechildren", 0) ~= 0
+	axis.smovechildren = tool:GetClientNumber("smovechildren", 0) ~= 0
+	axis.scalerelativemove = tool:GetClientNumber("scalerelativemove", 0) ~= 0
+	plTable.Axis = axis
+
+	plTable.updaterate = tool:GetClientNumber("updaterate", 0.01)
+	plTable.unfreeze = tool:GetClientNumber("unfreeze", 0)
+	plTable.snapenable = tool:GetClientNumber("snapenable", 0)
+	plTable.snapamount = tool:GetClientNumber("snapamount", 30)
+	plTable.physmove = tool:GetClientNumber("physmove", 0)
+	plTable.always_use_pl_view = tool:GetClientNumber("always_use_pl_view", 0)
+
+	RAGDOLLMOVER.Sync(pl, "Axis", "always_use_pl_view")
+end
+
+concommand.Add("ragdollmover_resetgizmo", function(pl)
+	local plTable = RAGDOLLMOVER[pl]
+	if not plTable or not IsValid(plTable.Axis) then return end
+
+	plTable.Axis:Remove()
+	spawnAxis(pl, pl:GetTool(), plTable)
+end)
+
 function TOOL:Deploy()
 	if SERVER then
 		local pl = self:GetOwner()
 		local plTable = RAGDOLLMOVER[pl]
 		local axis = plTable.Axis
 		if not IsValid(axis) then
-			axis = ents.Create("rgm_axis")
-			axis:SetPos(pl:EyePos())
-			axis:Spawn()
-			axis.Owner = pl
-			axis.localpos = self:GetClientNumber("localpos", 0) ~= 0
-			axis.localang = self:GetClientNumber("localang", 1) ~= 0
-			axis.localoffset = self:GetClientNumber("localoffset", 1) ~= 0
-			axis.relativerotate = self:GetClientNumber("relativerotate", 0) ~= 0
-			axis.scalechildren = self:GetClientNumber("scalechildren", 0) ~= 0
-			axis.smovechildren = self:GetClientNumber("smovechildren", 0) ~= 0
-			axis.scalerelativemove = self:GetClientNumber("scalerelativemove", 0) ~= 0
-			plTable.Axis = axis
-
-			plTable.updaterate = self:GetClientNumber("updaterate", 0.01)
-			plTable.unfreeze = self:GetClientNumber("unfreeze", 0)
-			plTable.snapenable = self:GetClientNumber("snapenable", 0)
-			plTable.snapamount = self:GetClientNumber("snapamount", 30)
-			plTable.physmove = self:GetClientNumber("physmove", 0)
-			plTable.always_use_pl_view = self:GetClientNumber("always_use_pl_view", 0)
-
-			RAGDOLLMOVER.Sync(pl, "Axis", "always_use_pl_view")
+			spawnAxis(pl, self, plTable)
 		end
 	end
 end
@@ -1927,29 +1940,7 @@ function TOOL:LeftClick()
 
 	local axis = plTable.Axis
 	if not IsValid(axis) then
-		axis = ents.Create("rgm_axis")
-		axis:SetPos(pl:EyePos())
-		axis:Spawn()
-		axis.Owner = pl
-		axis.localpos = self:GetClientNumber("localpos", 0) ~= 0
-		axis.localang = self:GetClientNumber("localang", 1) ~= 0
-		axis.localoffset = self:GetClientNumber("localoffset", 1) ~= 0
-		axis.relativerotate = self:GetClientNumber("relativerotate", 0) ~= 0
-		axis.scalechildren = self:GetClientNumber("scalechildren", 0) ~= 0
-		axis.smovechildren = self:GetClientNumber("smovechildren", 0) ~= 0
-		axis.scalerelativemove = self:GetClientNumber("scalerelativemove", 0) ~= 0
-		plTable.Axis = axis
-
-		plTable.updaterate = self:GetClientNumber("updaterate", 0.01)
-		plTable.unfreeze = self:GetClientNumber("unfreeze", 0)
-		plTable.snapenable = self:GetClientNumber("snapenable", 0)
-		plTable.snapamount = self:GetClientNumber("snapamount", 30)
-		plTable.physmove = self:GetClientNumber("physmove", 0)
-		plTable.always_use_pl_view = self:GetClientNumber("always_use_pl_view", 0)
-
-		plTable.Axis = axis
-
-		RAGDOLLMOVER.Sync(pl, "Axis", "always_use_pl_view")
+		spawnAxis(pl, self, plTable)
 		return false
 	end
 
@@ -2535,6 +2526,42 @@ end)
 
 local GizmoWidth, SkeletonDraw
 
+-- A singleton to track bone manipulate state, particularly scale. Useful if we want to use
+-- the bone manipulate state to indicate something (such as hovering over a bone in advanced bone select)
+local ClientBoneState = {
+	entity = NULL,
+	Scales = {},
+	UpdateBoneScales = function(self)
+		for i = 0, self.entity:GetBoneCount() - 1 do
+			self.Scales[i] = self.entity:GetManipulateBoneScale(i)
+		end
+	end,
+	ResetBoneScales = function(self)
+		for i = 0, self.entity:GetBoneCount() - 1 do
+			self.Scales[i] = VECTOR_SCALEDEF
+		end
+	end,
+	SetBoneScales = function(self, scale)
+		for i = 0, self.entity:GetBoneCount() - 1 do
+			self.Scales[i] = scale
+		end
+	end,
+	SetBoneScale = function(self, bone, scale, recursive)
+		self.Scales[bone] = scale or self.entity:GetManipulateBoneScale(bone)
+
+		local childBones = self.entity:GetChildBones(bone)
+		if recursive and #childBones > 0 then
+			for _, cbone in ipairs(childBones) do
+				self:SetBoneScale(cbone, scale, true)
+			end
+		end
+	end,
+	SetEntity = function(self, newEntity)
+		self.entity = newEntity
+		self:UpdateBoneScales()
+	end
+}
+
 do
 
 	local ConVars = {
@@ -2562,7 +2589,7 @@ do
 			net.SendToServer()
 			if k == 8 then
 				if not pl or not RAGDOLLMOVER[pl] or not IsValid(RAGDOLLMOVER[pl].Axis) then return end
-				RAGDOLLMOVER[pl].Axis.scale = new
+				RAGDOLLMOVER[pl].Axis.scale = tonumber(new)
 				RAGDOLLMOVER[pl].Axis:CalculateGizmo()
 			elseif k == 14 then
 				RAGDOLLMOVER[pl].always_use_pl_view = tonumber(new)
@@ -3070,6 +3097,7 @@ end
 local function RGMResetAllBones()
 	if not RAGDOLLMOVER[pl] or not RAGDOLLMOVER[pl].Entity then return end
 
+	ClientBoneState:ResetBoneScales()
 	NetStarter.rgmResetAllBones()
 		net.WriteEntity(RAGDOLLMOVER[pl].Entity)
 	net.SendToServer()
@@ -3238,7 +3266,7 @@ local Col4
 local LockMode, LockTo = false, { id = nil, ent = nil }
 local IsPropRagdoll, TreeEntities = false, {}
 local ScaleLocks = {}
-local ResetMode = false
+local ResetMode, RecalculateColors = false, false
 
 cvars.AddChangeCallback("ragdollmover_ik_hand_L", function(convar, old, new)
 	if not IsValid(EnableIKButt) then return end
@@ -3417,6 +3445,7 @@ NetStarter = {
 local NodeFunctions = {
 
 	function(ent, id) -- 1 nodeReset
+		ClientBoneState:SetBoneScale(id, VECTOR_SCALEDEF)
 		NetStarter.rgmResetAll()
 			net.WriteEntity(ent)
 			net.WriteUInt(id, 10)
@@ -3441,6 +3470,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 4 nodeResetScale
+		ClientBoneState:SetBoneScale(id, VECTOR_SCALEDEF)
 		NetStarter.rgmResetScale()
 			net.WriteEntity(ent)
 			net.WriteBool(false)
@@ -3449,6 +3479,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 5 nodeResetCh
+	ClientBoneState:SetBoneScale(id, VECTOR_SCALEDEF, true)
 		NetStarter.rgmResetAll()
 			net.WriteEntity(ent)
 			net.WriteUInt(id, 10)
@@ -3473,6 +3504,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 8 nodeResetScaleCh
+		ClientBoneState:SetBoneScale(id, VECTOR_SCALEDEF, true)
 		NetStarter.rgmResetScale()
 			net.WriteEntity(ent)
 			net.WriteBool(true)
@@ -3481,6 +3513,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id)  -- 9 nodeScaleZero
+		ClientBoneState:SetBoneScale(id, vector_origin)
 		NetStarter.rgmScaleZero()
 			net.WriteEntity(ent)
 			net.WriteBool(false)
@@ -3489,6 +3522,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 10 nodeScaleZeroCh
+		ClientBoneState:SetBoneScale(id, vector_origin, true)
 		NetStarter.rgmScaleZero()
 			net.WriteEntity(ent)
 			net.WriteBool(true)
@@ -3594,6 +3628,7 @@ local NodeFunctions = {
 }
 
 local function SetBoneNodes(bonepanel, sortedbones)
+	RecalculateColors = true
 	nodes = {}
 
 	local width = 0
@@ -4329,7 +4364,7 @@ end
 
 local function UpdateManipulationSliders(boneid, ent)
 	if not IsValid(Pos1) then return end
-	local pos, rot, scale = ent:GetManipulateBonePosition(boneid), ent:GetManipulateBoneAngles(boneid), ent:GetManipulateBoneScale(boneid)
+	local pos, rot, scale = ent:GetManipulateBonePosition(boneid), ent:GetManipulateBoneAngles(boneid), ClientBoneState.Scales[boneid] or ent:GetManipulateBoneScale(boneid)
 	rot:Normalize()
 
 	ManipSliderUpdating = true
@@ -4427,6 +4462,7 @@ local NETFUNC = {
 			physchildren[i] = net.ReadEntity()
 		end
 
+		ClientBoneState:SetEntity(selectedent)
 		if IsValid(BonePanel) then
 			RGMBuildBoneMenu(ents, selectedent, BonePanel)
 		end
@@ -4476,6 +4512,7 @@ local NETFUNC = {
 			physchildren[i] = net.ReadEntity()
 		end
 
+		ClientBoneState:SetEntity(ent)
 		if IsValid(BonePanel) then
 			RGMBuildBoneMenu(ents, ent, BonePanel)
 		end
@@ -4698,7 +4735,7 @@ end)
 local material = CreateMaterial("rgmGizmoMaterial", "UnlitGeneric", {
 	["$basetexture"] = 	"color/white",
   	["$model"] = 		1,
- 	["$alphatest"] = 	1,
+ 	["$translucent"] = 	1,
  	["$vertexalpha"] = 	1,
  	["$vertexcolor"] = 	1,
  	["$ignorez"] = 		1,
@@ -4714,6 +4751,11 @@ function TOOL:Think()
 		local op = self:GetOperation()
 		local nowpressed = input.IsMouseDown(MOUSE_LEFT) or input.IsMouseDown(MOUSE_RIGHT)
 		local isright = input.IsMouseDown(MOUSE_RIGHT)
+
+		-- Track that we are moving a bone, and store its bone scale. 
+		if plTable.Moving then
+			ClientBoneState:UpdateBoneScales()
+		end
 
 		if nowpressed and not LastPressed and op == 2 then -- left click is a predicted function, so leftclick wouldn't work in singleplayer since i need data from client
 			local ent = plTable.Entity
@@ -4901,6 +4943,7 @@ hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
 end)
 
 local BoneColors = {}
+local BoneScaleGroup, LastId, LastOp = {}, 0, 0
 local LastSelectThink, LastEnt = 0, nil
 
 function TOOL:DrawHUD()
@@ -4960,16 +5003,18 @@ function TOOL:DrawHUD()
 		rgm.DrawSkeleton(ent, nodes)
 	end
 
+	local id = 0
 	if self:GetOperation() == 2 and IsValid(ent) then
 		local timecheck = (thinktime - LastSelectThink) > 0.1
-		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck
+		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck or RecalculateColors
+		RecalculateColors = false
 
 		if self:GetStage() == 0 then
-			BoneColors = rgm.AdvBoneSelectRender(ent, nodes, BoneColors, calc, eyepos, viewvec, fov)
+			BoneColors, BoneScaleGroup, id = rgm.AdvBoneSelectRender(ent, nodes, BoneColors, calc, eyepos, viewvec, fov)
 		else
-			rgm.AdvBoneSelectRadialRender(ent, plTable.SelectedBones, nodes, ResetMode)
+			BoneScaleGroup, id = rgm.AdvBoneSelectRadialRender(ent, plTable.SelectedBones, nodes, ResetMode)
 		end
-
+		
 		LastEnt = ent
 		if timecheck then
 			LastSelectThink = thinktime
@@ -4986,6 +5031,40 @@ function TOOL:DrawHUD()
 		rgm.DrawEntName(HoveredEnt)
 	end
 
+	-- Advanced Bone Select visual indicators
+	local opsDifferent = LastOp ~= self:GetOperation()
+	if IsValid(ent) then
+		-- We need to track the original manipulatebonescale (scales for short) while we also use the ManipulateBoneScale function
+
+		if opsDifferent then
+			if self:GetOperation() == 2 then
+				-- If we began advanced bone select, store the original scales
+				ClientBoneState:UpdateBoneScales()
+			else
+				-- If we just left it, restore the original scales
+				for i = 0, ent:GetBoneCount() - 1 do
+					ent:ManipulateBoneScale(i, ClientBoneState.Scales[i])
+				end
+			end
+		end
+
+		if self:GetOperation() == 2 then
+			-- If we're hovering over a different bone
+			if LastId ~= id then
+				-- Reset the bone to the original scale. This prevents us from adding or subtracting scales from
+				-- previous iterations of using advanced bone select
+				for i = 0, ent:GetBoneCount() - 1 do
+					ent:ManipulateBoneScale(i, ClientBoneState.Scales[i])
+				end
+			end
+
+			-- Show selected bone, regardless if any are selected
+			rgm.AdvBoneSelectPulse(ent, BoneScaleGroup, ClientBoneState.Scales)
+		end
+
+		LastId = id
+	end
+	LastOp = self:GetOperation()
 end
 
 end
