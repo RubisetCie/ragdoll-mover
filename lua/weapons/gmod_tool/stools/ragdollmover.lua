@@ -20,7 +20,7 @@ TOOL.ClientConVar["scalerelativemove"] = 0
 TOOL.ClientConVar["drawskeleton"] = 0
 TOOL.ClientConVar["snapenable"] = 0
 TOOL.ClientConVar["snapamount"] = 30
-TOOL.ClientConVar["drawsphere"] = 1
+TOOL.ClientConVar["drawsphere"] = 0
 
 TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
@@ -3651,7 +3651,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 			nodes[ent][v.id].Type = v.Type
 			nodes[ent][v.id]:SetExpanded(true)
 
-			if ScaleLocks[ent][v.id] then
+			if ScaleLocks[ent] and ScaleLocks[ent][v.id] then
 				nodes[ent][v.id]:SetIcon("icon16/lightbulb.png")
 				nodes[ent][v.id].Label:SetToolTip("#tool.ragdollmover.lockedscale")
 				nodes[ent][v.id].scllock = true
@@ -4201,11 +4201,11 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 	end
 end
 
-local function RGMMakeBoneButtonPanel(cat, cpanel)
+local function RGMMakeBoneButtonPanel(col)
 	local plTable = RAGDOLLMOVER[pl]
-	local parentpanel = vgui.Create("Panel", cat)
+	local parentpanel = vgui.Create("Panel", col)
 	parentpanel:SetSize(100, 30)
-	cat:AddItem(parentpanel)
+	col:AddItem(parentpanel)
 
 	parentpanel.ShowAll = vgui.Create("DButton", parentpanel)
 	parentpanel.ShowAll:Dock(FILL)
@@ -4238,6 +4238,33 @@ local function RGMMakeBoneButtonPanel(cat, cpanel)
 	end
 
 	return parentpanel
+end
+
+local function RGMMakeAngleSnap(col)
+	local parentpanel = vgui.Create("DPanelList", col)
+	parentpanel:EnableHorizontal(false)
+
+	local snapcheck = CCheckBox(parentpanel, "#tool.ragdollmover.snapenable", "ragdollmover_snapenable")
+	local snapslider = CNumSlider(parentpanel, "#tool.ragdollmover.snapamount", "ragdollmover_snapamount", 1, 180, 0)
+
+	function snapcheck:OnChange(val)
+		val = tobool(val)
+		if self.expanded == val then return end
+
+		self.expanded = val
+		snapslider:SetVisible(val)
+
+		parentpanel:InvalidateLayout()
+		parentpanel:GetParent():InvalidateLayout()
+	end
+
+	parentpanel.OldPerform = parentpanel.PerformLayout
+	function parentpanel:PerformLayout()
+		self:OldPerform()
+		self:SizeToChildren(false, true)
+	end
+
+	col:AddItem(parentpanel)
 end
 
 local function rgmDoNotification(message)
@@ -4285,11 +4312,7 @@ function TOOL.BuildCPanel(CPanel)
 		CB:SetToolTip("#tool.ragdollmover.unfreezetip")
 		local DisFil = CCheckBox(Col3, "#tool.ragdollmover.disablefilter", "ragdollmover_disablefilter")
 		DisFil:SetToolTip("#tool.ragdollmover.disablefiltertip")
-		local physmovecheck = CCheckBox(Col3, "#tool.ragdollmover.physmove", "ragdollmover_physmove")
-		physmovecheck:SetToolTip("#tool.ragdollmover.physmovetip")
 		CCheckBox(Col3, "#tool.ragdollmover.drawskeleton", "ragdollmover_drawskeleton")
-		CCheckBox(Col3, "#tool.ragdollmover.snapenable", "ragdollmover_snapenable")
-		CNumSlider(Col3, "#tool.ragdollmover.snapamount", "ragdollmover_snapamount", 1, 180, 0)
 		CNumSlider(Col3, "#tool.ragdollmover.updaterate", "ragdollmover_updaterate", 0.01, 1.0, 2)
 
 	CBinder(CPanel)
@@ -4326,13 +4349,18 @@ function TOOL.BuildCPanel(CPanel)
 
 			CButton(ColManip, "#tool.ragdollmover.resetallbones", RGMResetAllBones)
 
+		local physmovecheck = CCheckBox(Col4, "#tool.ragdollmover.physmove", "ragdollmover_physmove")
+		physmovecheck:SetToolTip("#tool.ragdollmover.physmovetip")
+		RGMMakeAngleSnap(Col4)
+		
+
 		local Col5 = CCol(Col4, "#tool.ragdollmover.scaleoptions", true) 
 		CCheckBox(Col5, "#tool.ragdollmover.scalechildren", "ragdollmover_scalechildren")
 		CCheckBox(Col5, "#tool.ragdollmover.smovechildren", "ragdollmover_smovechildren")
 		CCheckBox(Col5, "#tool.ragdollmover.scalerelativemove", "ragdollmover_scalerelativemove")
 
 		local ColBones = CCol(Col4, "#tool.ragdollmover.bonelist")
-			RGMMakeBoneButtonPanel(ColBones, CPanel)
+			RGMMakeBoneButtonPanel(ColBones)
 			BonePanel = vgui.Create("DTree", ColBones)
 			BonePanel:SetTall(600)
 			AddHBar(BonePanel)
@@ -4558,7 +4586,7 @@ local NETFUNC = {
 					elseif anglock or poslock then
 						nodes[ent][bone]:SetIcon("icon16/lock.png")
 						nodes[ent][bone].Label:SetToolTip("#tool.ragdollmover.lockedbone")
-					elseif ScaleLocks[ent][bone] then
+					elseif ScaleLocks[ent] and ScaleLocks[ent][bone] then
 						nodes[ent][bone]:SetIcon("icon16/lightbulb.png")
 						nodes[ent][bone].Label:SetToolTip("#tool.ragdollmover.lockedscale")
 					else
@@ -4999,12 +5027,12 @@ function TOOL:DrawHUD()
 		filter = { pl, pl:GetViewEntity() }
 	})
 	local aimedbone = IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" and plTable.AimedBone or 0) or 0
-	if IsValid(ent) and EntityFilter(ent, self) and SkeletonDraw then
+	if nodes and IsValid(ent) and EntityFilter(ent, self) and SkeletonDraw then
 		rgm.DrawSkeleton(ent, nodes)
 	end
 
 	local id = 0
-	if self:GetOperation() == 2 and IsValid(ent) then
+	if nodes and self:GetOperation() == 2 and IsValid(ent) then
 		local timecheck = (thinktime - LastSelectThink) > 0.1
 		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck or RecalculateColors
 		RecalculateColors = false

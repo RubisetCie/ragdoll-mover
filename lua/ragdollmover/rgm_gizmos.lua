@@ -335,7 +335,7 @@ do
 		function posarrow:GetLinePositions(width)
 			local RTable
 
-			if self.Parent.width ~= width or not self.linepositions then
+			if self.Parent.pwidth ~= width or not self.linepositions then
 				RTable = {
 					{Vector(0.1, -0.075 * width, 0), Vector(0.75, -0.075 * width, 0), Vector(0.75, 0.075 * width, 0), Vector(0.1, 0.075 * width, 0)},
 					{Vector(0.75, -0.0625 - 0.0625 * width, 0), VECTOR_FRONT, VECTOR_FRONT, Vector(0.75, 0.0625 + 0.0625 * width, 0)}
@@ -489,7 +489,7 @@ do
 		function posside:GetLinePositions(width)
 			local RTable
 
-			if self.Parent.width ~= width or not self.linepositions then
+			if self.Parent.pwidth ~= width or not self.linepositions then
 				RTable = {
 					{Vector(0, 0.25 - 0.05 * width, 0), Vector(0, 0.25 - 0.05 * width, 0.25 - 0.05 * width), Vector(0, 0.25 + 0.05 * width, 0.25 + 0.05 * width), Vector(0, 0.25 + 0.05 * width, 0)},
 					{Vector(0, 0, 0.25 - 0.05 * width), Vector(0, 0.25 - 0.05 * width, 0.25 - 0.05 * width), Vector(0, 0.25 + 0.05 * width, 0.25 + 0.05 * width), Vector(0, 0, 0.25 + 0.05 * width)}
@@ -666,7 +666,7 @@ do
 		function omnipos:GetLinePositions(width)
 			local RTable
 
-			if self.Parent.width ~= width or not self.linepositions then
+			if self.Parent.pwidth ~= width or not self.linepositions then
 				RTable = {{Vector(0, -0.08 * width, -0.08 * width), Vector(0, -0.08 * width, 0.08 * width), Vector(0, 0.08 * width, 0.08 * width), Vector(0, 0.08 * width, -0.08 * width)}}
 
 				self.linepositions = RTable
@@ -931,7 +931,7 @@ do
 			local startposmin
 			local startposmax
 
-			if self.Parent.width ~= width or not self.linepositions then
+			if self.Parent.rwidth ~= width or not self.linepositions then
 				startposmin = Vector(0, 0,1 - 0.1 * width)
 				startposmax = Vector(0, 0,1 + 0.1 * width)
 
@@ -1321,7 +1321,7 @@ do
 		function scalearrow:GetLinePositions(width)
 			local RTable
 
-			if self.Parent.width ~= width or not self.linepositions then
+			if self.Parent.swidth ~= width or not self.linepositions then
 				RTable = {
 					{Vector(0.075 * width, -0.075 * width, 0), Vector(0.97, -0.075 * width, 0), Vector( 0.97, 0.075 * width, 0), Vector(0.075 * width, 0.075 * width, 0)},
 					{Vector(0.97, -0.0625 - 0.0625 * width, 0), Vector(1, -0.0625 - 0.0625 * width, 0), Vector(1, 0.0625 + 0.0625 * width, 0), Vector(0.97, 0.0625 + 0.0625 * width, 0)}
@@ -1397,6 +1397,27 @@ do
 			pos = finalpos
 
 			return pos, ang
+		end
+
+	end
+
+	if CLIENT then
+
+		function scaleside:GetLinePositions(width)
+			local RTable
+
+			if self.Parent.swidth ~= width or not self.linepositions then
+				RTable = {
+					{Vector(0, 0.25 - 0.05 * width, 0), Vector(0, 0.25 - 0.05 * width, 0.25 - 0.05 * width), Vector(0, 0.25 + 0.05 * width, 0.25 + 0.05 * width), Vector(0, 0.25 + 0.05 * width, 0)},
+					{Vector(0, 0, 0.25 - 0.05 * width), Vector(0, 0.25 - 0.05 * width, 0.25 - 0.05 * width), Vector(0, 0.25 + 0.05 * width, 0.25 + 0.05 * width), Vector(0, 0, 0.25 + 0.05 * width)}
+				}
+
+				self.linepositions = RTable
+			else
+				RTable = self.linepositions
+			end
+
+			return RTable
 		end
 
 	end
