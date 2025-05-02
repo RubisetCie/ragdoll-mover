@@ -62,8 +62,11 @@ function ENT:Initialize()
 	self.ScaleZ.axistype = AxisType.Z
 
 	self.ScaleXY = CreateGizmo(GizmoType.ScaleSide, self, color_green, vector_down:Angle(), color_red)
+	self.ScaleXY.axistype = AxisType.XY
 	self.ScaleXZ = CreateGizmo(GizmoType.ScaleSide, self, color_red, vector_back:Angle(), color_blue)
+	self.ScaleXZ.axistype = AxisType.XZ
 	self.ScaleYZ = CreateGizmo(GizmoType.ScaleSide, self, color_green, vector_right:Angle(), color_blue)
+	self.ScaleYZ.axistype = AxisType.YZ
 
 	self.Axises = {}
 
