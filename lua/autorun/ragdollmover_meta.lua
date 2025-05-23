@@ -3,8 +3,6 @@
 	Other functionality that isn't part of the rgm module.
 ]]
 
-resource.AddSingleFile("resource/localization/en/ragdollmover_tools.properties")
-
 local MAX_EDICT_BITS = 13
 
 local TYPE_ENTITY	 = 1
@@ -42,6 +40,8 @@ end)
 
 if SERVER then
 
+resource.AddWorkshop("104575630")
+
 util.AddNetworkString("RAGDOLLMOVER_META")
 
 hook.Add("PlayerSpawn", "rgmSpawn", function(pl) --PlayerSpawn is a hook that runs only serverside btw
@@ -60,17 +60,18 @@ hook.Add("PlayerSpawn", "rgmSpawn", function(pl) --PlayerSpawn is a hook that ru
 	end
 end)
 
+local NumpadBindRot, NumpadBindScale = {}, {}
+local RotKey, ScaleKey = {}, {}
+local rgmMode = {}
+
 hook.Add("PlayerDisconnected", "RGMCleanupGizmos", function(pl)
 	if IsValid(RAGDOLLMOVER[pl].Axis) then
 		RAGDOLLMOVER[pl].Axis:Remove()
 	end
+	if NumpadBindRot[pl] then numpad.Remove(NumpadBindRot[pl]) end
+	if NumpadBindScale[pl] then numpad.Remove(NumpadBindScale[pl]) end
 	RAGDOLLMOVER[pl] = nil
 end)
-
-
-local NumpadBindRot, NumpadBindScale = {}, {}
-local RotKey, ScaleKey = {}, {}
-local rgmMode = {}
 
 if game.SinglePlayer() then
 

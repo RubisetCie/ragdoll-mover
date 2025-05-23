@@ -1175,6 +1175,12 @@ local NETFUNC = {
 				end
 			net.Send(pl)
 		end
+
+		NetStarter.rgmSelectBoneResponse()
+			net.WriteBool(plTable.IsPhysBone)
+			net.WriteEntity(plTable.Entity)
+			net.WriteUInt(plTable.Bone, 10)
+		net.Send(pl)
 	end,
 
 	function(len, pl) --				12 - rgmSendBonePos
@@ -1796,6 +1802,23 @@ local NETFUNC = {
 				plTable.snapamount = plTable.snapamount < 1 and 1 or plTable.snapamount
 			end
 		end
+	end,
+
+	function(len, pl) --				27 - rgmDedicatedResetRoot
+		local plTable = RAGDOLLMOVER[pl]
+		if not plTable or not IsValid(plTable.Entity) then return end
+		local bone = plTable.Bone
+
+		rgmGetBone(pl, plTable.Entity, plTable.BoneToResetTo)
+		plTable.BoneToResetTo = bone
+
+		RAGDOLLMOVER.Sync(pl, "Bone", "IsPhysBone")
+
+		NetStarter.rgmSelectBoneResponse()
+			net.WriteBool(plTable.IsPhysBone)
+			net.WriteEntity(plTable.Entity)
+			net.WriteUInt(plTable.Bone, 10)
+		net.Send(pl)
 	end
 }
 
@@ -1818,27 +1841,32 @@ end)
 end
 
 concommand.Add("ragdollmover_resetroot", function(pl)
-	local plTable = RAGDOLLMOVER[pl]
-	if not plTable or not IsValid(plTable.Entity) then return end
-	local bone = plTable.Bone
+	if CLIENT then
+		NetStarter.rgmDedicatedResetRoot() -- note that this is clientside netstarter
+		net.SendToServer()
+	else
+		local plTable = RAGDOLLMOVER[pl]
+		if not plTable or not IsValid(plTable.Entity) then return end
+		local bone = plTable.Bone
 
-	rgmGetBone(pl, plTable.Entity, plTable.BoneToResetTo)
-	plTable.BoneToResetTo = bone
+		rgmGetBone(pl, plTable.Entity, plTable.BoneToResetTo)
+		plTable.BoneToResetTo = bone
 
-	RAGDOLLMOVER.Sync(pl, "Bone", "IsPhysBone")
+		RAGDOLLMOVER.Sync(pl, "Bone", "IsPhysBone")
 
-	NetStarter.rgmSelectBoneResponse()
-		net.WriteBool(plTable.IsPhysBone)
-		net.WriteEntity(plTable.Entity)
-		net.WriteUInt(plTable.Bone, 10)
-	net.Send(pl)
+		NetStarter.rgmSelectBoneResponse()
+			net.WriteBool(plTable.IsPhysBone)
+			net.WriteEntity(plTable.Entity)
+			net.WriteUInt(plTable.Bone, 10)
+		net.Send(pl)
+	end
 end)
 
 local function spawnAxis(pl, tool, plTable)
 	local axis = ents.Create("rgm_axis")
 	axis:SetPos(pl:EyePos())
-	axis:Spawn()
 	axis.Owner = pl
+	axis:Spawn()
 	axis.localpos = tool:GetClientNumber("localpos", 0) ~= 0
 	axis.localang = tool:GetClientNumber("localang", 1) ~= 0
 	axis.localoffset = tool:GetClientNumber("localoffset", 1) ~= 0
@@ -1858,7 +1886,8 @@ local function spawnAxis(pl, tool, plTable)
 	RAGDOLLMOVER.Sync(pl, "Axis", "always_use_pl_view")
 end
 
-concommand.Add("ragdollmover_resetgizmo", function(pl)
+concommand.Add("ragdollmover_resetgizmo", function(pl) -- This will not work on dedicated servers
+	if CLIENT then return end
 	local plTable = RAGDOLLMOVER[pl]
 	if not plTable or not IsValid(plTable.Axis) then return end
 
@@ -2225,7 +2254,7 @@ function TOOL:Reload()
 		return false
 	end
 
-	RunConsoleCommand("ragdollmover_resetroot")
+	self:GetOwner():ConCommand("ragdollmover_resetroot")
 	return false
 end
 
@@ -2691,6 +2720,9 @@ local function rgmSendBonePos(pl, ent, boneid)
 		pos = matrix:GetTranslation()
 		ang = matrix:GetAngles()
 
+		gizmopos = pos
+		gizmoang = ang
+
 		if ent:GetClass() == "ent_advbonemerge" and ent.AdvBone_BoneInfo then -- an exception for advanced bonemerged stuff
 			local advbones = ent.AdvBone_BoneInfo
 			local parent = ent:GetParent()
@@ -2698,6 +2730,14 @@ local function rgmSendBonePos(pl, ent, boneid)
 			if IsValid(parent) and advbones[boneid].parent and advbones[boneid].parent ~= "" then
 				gizmoppos = pos
 				gizmopang = ang
+				local manang = ent:GetManipulateBoneAngles(boneid)*1
+				_, gizmopang = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, gizmopang)
+				_, gizmopang = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, gizmopang)
+				_, gizmopang = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, gizmopang)
+
+				_, gizmoang = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, gizmoang)
+				_, gizmoang = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, gizmoang)
+				_, gizmoang = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, gizmoang)
 			else
 				if ent:GetBoneParent(boneid) ~= -1 then
 					local matrix = ent:GetBoneMatrix(ent:GetBoneParent(boneid))
@@ -2708,7 +2748,7 @@ local function rgmSendBonePos(pl, ent, boneid)
 					gizmopang = matrix:GetAngles()
 				else
 					gizmoppos = parent:GetPos()
-					gizmopang = ent:GetAngles()
+					gizmopang = parent:GetAngles()
 				end
 			end
 		elseif ent:GetBoneParent(boneid) ~= -1 then
@@ -2723,8 +2763,6 @@ local function rgmSendBonePos(pl, ent, boneid)
 			gizmopang = ent:GetAngles()
 		end
 
-		gizmopos = pos
-		gizmoang = ang
 	else
 		gizmopos = vector_origin
 		gizmoang = angle_zero
@@ -3444,6 +3482,11 @@ NetStarter = {
 	rgmUpdateCCVar = function() -- 26
 		net.Start("RAGDOLLMOVER")
 		net.WriteUInt(26, 5)
+	end,
+
+	rgmDedicatedResetRoot = function() -- 27
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(27, 5)
 	end
 
 }
