@@ -21,6 +21,9 @@ local GIZMO_WEIGHT = 0.1
 local IsValid = IsValid
 local util = util
 
+function ENT:UpdateTransmitState()
+	return TRANSMIT_ALWAYS
+end
 function ENT:Think()
 	local pl = self.Owner
 	local size = self.DefaultMinMax
@@ -115,7 +118,7 @@ function ENT:Think()
 	elseif plTable.IsPhysBone and not scale then
 
 		local physobj = ent:GetPhysicsObjectNum(bone)
-		if physobj == nil then return end
+		if not physobj then return end
 		ang = physobj:GetAngles()
 
 	else
